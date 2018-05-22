@@ -2,9 +2,11 @@
 #
 # ESXi-Customizer-PS.ps1 - a script to build a customized ESXi installation ISO using ImageBuilder
 #
-# Version:       2.6.0
+# Version:       2.7.0
 # Author:        Andreas Peetz (ESXi-Customizer-PS@v-front.de)
 # Info/Tutorial: https://esxi-customizer-ps.v-front.de/
+#
+# Contributors:  Andre Pett
 #
 # License:
 #
@@ -41,12 +43,13 @@ param(
     [switch]$v65 = $false,
     [switch]$v67 = $false,
     [switch]$update = $false,
+    [string]$pZip = "",
     [string]$log = ($env:TEMP + "\ESXi-Customizer-PS-" + $PID + ".log")
 )
 
 # Constants
 $ScriptName = "ESXi-Customizer-PS"
-$ScriptVersion = "2.6.0"
+$ScriptVersion = "2.7.0"
 $ScriptURL = "https://ESXi-Customizer-PS.v-front.de"
 
 $AccLevel = @{"VMwareCertified" = 1; "VMwareAccepted" = 2; "PartnerSupported" = 3; "CommunitySupported" = 4}
@@ -59,6 +62,20 @@ $vftdepotURL = "https://vibsdepot.v-front.de/"
 function AddVIB2Profile($vib) {
     $AddVersion = $vib.Version
     $ExVersion = ($MyProfile.VibList | where { $_.Name -eq $vib.Name }).Version
+    
+    # Check for vib replacements
+    $ExName = ""
+    if ($ExVersion -eq $null) {
+        foreach ($replaces in $vib.replaces) {
+            $ExVib = $MyProfile.VibList | where { $_.Name -eq $replaces }
+            if ($ExVib -ne $null) {
+                $ExName = $ExVib.Name + " "
+                $ExVersion = $ExVib.Version
+                break
+            }
+        }
+    }
+    
     if ($AccLevel[$vib.AcceptanceLevel.ToString()] -gt $AccLevel[$MyProfile.AcceptanceLevel.ToString()]) {
         write-host -ForegroundColor Yellow -nonewline (" [New AcceptanceLevel: " + $vib.AcceptanceLevel + "]")
         $MyProfile.AcceptanceLevel = $vib.AcceptanceLevel
@@ -71,7 +88,7 @@ function AddVIB2Profile($vib) {
             if ($ExVersion -eq $null) {
                 write-host -ForegroundColor Green " [OK, added]"
             } else {
-                write-host -ForegroundColor Yellow (" [OK, replaced " + $ExVersion + "]")
+                write-host -ForegroundColor Green (" [OK, replaced " + $ExName + $ExVersion + "]")
             }
         } else {
             write-host -ForegroundColor Red " [FAILED, invalid package?]"
@@ -92,10 +109,6 @@ function cleanup() {
     if ($DefaultSoftwaredepots) { Remove-EsxSoftwaredepot $DefaultSoftwaredepots }
 }
 
-# Set up the screen
-$pswindow = (get-host).ui.rawui
-$pswindow.windowtitle = $ScriptName + " " + $ScriptVersion + " - " + $ScriptUrl
-
 # Write info and help if requested
 write-host ("`nThis is " + $ScriptName + " Version " + $ScriptVersion + " (visit " + $ScriptURL + " for more information!)")
 if ($help) {
@@ -109,6 +122,7 @@ if ($help) {
     write-host "   -izip <bundle>     : use the VMware Offline bundle <bundle> as input instead of the Online depot"
     write-host "   -update            : only with -izip, updates a local bundle with an ESXi patch from the VMware Online depot,"
     write-host "                        combine this with the matching ESXi version selection switch"
+    write-host "   -pzip              : use an Offline patch bundle instead of the Online depot with -update."
     write-host "   -pkgDir <dir>      : local directory of Offline bundles and/or VIB files to add (if any, no default)"
     write-host "   -ozip              : output an Offline bundle instead of an installation ISO"
     write-host "   -outDir <dir>      : directory to store the customized ISO or Offline bundle (the default is the"
@@ -224,9 +238,13 @@ if ($update) {
     }
 }
 
+if ($update -and $pzip -ne "") {
+   $vmwdepotURL = $pZip
+}
+
 if (($izip -eq "") -or $update) {
     # Connect the VMware ESXi base depot
-    write-host -nonewline "`nConnecting the VMware ESXi Online depot ..."
+    write-host -nonewline "`nConnecting the VMware ESXi Software depot ..."
     if ($basedepot = Add-EsxSoftwaredepot $vmwdepotURL) {
         write-host -ForegroundColor Green " [OK]"
     } else {
