@@ -2,9 +2,11 @@
 #
 # ESXi-Customizer-PS.ps1 - a script to build a customized ESXi installation ISO using ImageBuilder
 #
-# Version:       2.6.0
+# Version:       2.7.0
 # Author:        Andreas Peetz (ESXi-Customizer-PS@v-front.de)
 # Info/Tutorial: https://esxi-customizer-ps.v-front.de/
+#
+# Contributors:  Andre Pett
 #
 # License:
 #
@@ -47,7 +49,7 @@ param(
 
 # Constants
 $ScriptName = "ESXi-Customizer-PS"
-$ScriptVersion = "2.6.0"
+$ScriptVersion = "2.7.0"
 $ScriptURL = "https://ESXi-Customizer-PS.v-front.de"
 
 $AccLevel = @{"VMwareCertified" = 1; "VMwareAccepted" = 2; "PartnerSupported" = 3; "CommunitySupported" = 4}
