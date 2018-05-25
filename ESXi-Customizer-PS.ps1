@@ -282,7 +282,7 @@ if ($dpt -ne @()) {
 			write-host -F Green " [OK]"
 		} else {
 			write-host -F Red "`nFATAL ERROR: Cannot add Online depot or Offline bundle. In case of Online depot check your Internet"
-            write-host -F Red "connectivity and/or proxy settings! In case of Offline bundle check file name, format and permissions!`n"
+			write-host -F Red "connectivity and/or proxy settings! In case of Offline bundle check file name, format and permissions!`n"
 			exit
 		}
 	}
