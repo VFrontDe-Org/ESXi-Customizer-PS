@@ -208,10 +208,10 @@ $psv = $PSVersionTable.PSVersion | select Major,Minor
 
 if ($isModule["VMware.VimAutomation.Core"]) {
 	$pcmv = (Get-Module VMware.PowerCLI).Version | select Major,Minor,Build,Revision
-	write-host -F Cyan ("`nRunning with PowerShell version " + $psv.Major + "." + $psv.Minor + " and VMware PowerCLI version " + $pcmv.Major + "." + $pcmv.Minor + "." + $pcmv.Build + " build " + $pcmv.Revision )
+	write-host -F Yellow ("`nRunning with PowerShell version " + $psv.Major + "." + $psv.Minor + " and VMware PowerCLI version " + $pcmv.Major + "." + $pcmv.Minor + "." + $pcmv.Build + " build " + $pcmv.Revision )
 } else {
 	$pcv = Get-PowerCLIVersion | select major,minor,UserFriendlyVersion
-	write-host ("`nRunning with PowerShell version " + $psv.Major + "." + $psv.Minor + " and " + $pcv.UserFriendlyVersion)
+	write-host -F Yellow ("`nRunning with PowerShell version " + $psv.Major + "." + $psv.Minor + " and " + $pcv.UserFriendlyVersion)
 	if ( ($pcv.major -lt 5) -or (($pcv.major -eq 5) -and ($pcv.minor -eq 0)) ) {
 		write-host -F Red "`nFATAL ERROR: This script requires at least PowerCLI version 5.1 !`n"
 		exit
