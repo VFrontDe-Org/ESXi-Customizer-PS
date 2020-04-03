@@ -2,11 +2,11 @@
 #
 # ESXi-Customizer-PS.ps1 - a script to build a customized ESXi installation ISO using ImageBuilder
 #
-# Version:       2.7.0
+# Version:       2.8.0
 # Author:        Andreas Peetz (ESXi-Customizer-PS@v-front.de)
 # Info/Tutorial: https://esxi-customizer-ps.v-front.de/
 #
-# Contributors:  Andre Pett, Alex Lopez
+# Contributors:  Alex Lopez, Andre Pett
 #
 # License:
 #
@@ -42,6 +42,7 @@ param(
     [switch]$v60 = $false,
     [switch]$v65 = $false,
     [switch]$v67 = $false,
+    [switch]$v70 = $false,
     [switch]$update = $false,
     [string]$pZip = "",
     [string]$log = ($env:TEMP + "\ESXi-Customizer-PS-" + $PID + ".log")
@@ -49,7 +50,7 @@ param(
 
 # Constants
 $ScriptName = "ESXi-Customizer-PS"
-$ScriptVersion = "2.7.0"
+$ScriptVersion = "2.8.0"
 $ScriptURL = "https://ESXi-Customizer-PS.v-front.de"
 
 $AccLevel = @{"VMwareCertified" = 1; "VMwareAccepted" = 2; "PartnerSupported" = 3; "CommunitySupported" = 4}
@@ -113,7 +114,7 @@ function cleanup() {
 write-host ("`nThis is " + $ScriptName + " Version " + $ScriptVersion + " (visit " + $ScriptURL + " for more information!)")
 if ($help) {
     write-host "`nUsage:"
-    write-host "  ESXi-Customizer-PS [-help] |  [-izip <bundle> [-update]] [-sip] [-v67|-v65|-v60|-v55|-v51|-v50]"
+    write-host "  ESXi-Customizer-PS [-help] |  [-izip <bundle> [-update]] [-sip] [-v70|-v67|-v65|-v60|-v55|-v51|-v50]"
     write-host "                                [-ozip] [-pkgDir <dir>] [-outDir <dir>] [-vft] [-dpt depot1[,...]]"
     write-host "                                [-load vib1[,...]] [-remove vib1[,...]] [-log <file>] [-ipname <name>]"
     write-host "                                [-ipdesc <desc>] [-ipvendor <vendor>] [-nsc] [-test]"
@@ -133,8 +134,9 @@ if ($help) {
     write-host "   -remove vib1[,...] : remove named VIB packages from the custom Imageprofile"
     write-host "   -sip               : select an Imageprofile from the current list"
     write-host "                        (default = auto-select latest available standard profile)"
+    write-host "   -v70 |"
     write-host "   -v67 | -v65 | -v60 |"
-    write-host "   -v55 | -v51 | -v50 : Use only ESXi 6.7/6.5/6.0/5.5/5.1/5.0 Imageprofiles as input, ignore other versions"
+    write-host "   -v55 | -v51 | -v50 : Use only ESXi 7.0/6.7/6.5/6.0/5.5/5.1/5.0 Imageprofiles as input, ignore other versions"
     write-host "   -nsc               : use -NoSignatureCheck with export"
     write-host "   -log <file>        : Use custom log file <file>"
     write-host "   -ipname <name>"
@@ -191,7 +193,7 @@ foreach ($comp in "VMware.VimAutomation.Core", "VMware.ImageBuilder") {
 }
 
 # Parameter sanity check
-if ( ($v50 -and ($v51 -or $v55 -or $v60 -or $v65 -or $v67)) -or ($v51 -and ($v55 -or $v60 -or $v65 -or $v67)) -or ($v55 -and ($v60 -or $v65 -or $v67)) -or ($v60 -and ($v65 -or $v67)) -or ($v65 -and $v67) ) {
+if ( ($v50 -and ($v51 -or $v55 -or $v60 -or $v65 -or $v67 -or $v70)) -or ($v51 -and ($v55 -or $v60 -or $v65 -or $v67 -or $v70)) -or ($v55 -and ($v60 -or $v65 -or $v67 -or $v70)) -or ($v60 -and ($v65 -or $v67 -or $70)) -or ($v65 -and ($v67 -or $v70)) -or ($v70 -and ($v51 -or $v55 -or $v60 -or $v65 -or $v67)) ) {
     write-host -F Yellow "`nWARNING: Multiple ESXi versions specified. Highest version will take precedence!"
 }
 if ($update -and ($izip -eq "")) {
@@ -294,31 +296,36 @@ $iplist = @()
 if ($iZip -and !($update)) {
     Get-EsxImageprofile -Softwaredepot $basedepot | foreach { $iplist += $_ }
 } else {
-	if ($v67) {
-		Get-EsxImageprofile "ESXi-6.7*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+	if ($v70) {
+		Get-EsxImageprofile "ESXi-7.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
 	} else {
-		if ($v65) {
-			Get-EsxImageprofile "ESXi-6.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+		if ($v67) {
+			Get-EsxImageprofile "ESXi-6.7*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
 		} else {
-			if ($v60) {
-				Get-EsxImageprofile "ESXi-6.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+			if ($v65) {
+				Get-EsxImageprofile "ESXi-6.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
 			} else {
-				if ($v55) {
-					Get-EsxImageprofile "ESXi-5.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+				if ($v60) {
+					Get-EsxImageprofile "ESXi-6.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
 				} else {
-					if ($v51) {
-						Get-EsxImageprofile "ESXi-5.1*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+					if ($v55) {
+						Get-EsxImageprofile "ESXi-5.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
 					} else {
-						if ($v50) {
-							Get-EsxImageprofile "ESXi-5.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-						} else {
-							# Workaround for http://kb.vmware.com/kb/2089217
-							Get-EsxImageprofile "ESXi-5.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+						if ($v51) {
 							Get-EsxImageprofile "ESXi-5.1*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-							Get-EsxImageprofile "ESXi-5.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-							Get-EsxImageprofile "ESXi-6.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-							Get-EsxImageprofile "ESXi-6.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-							Get-EsxImageprofile "ESXi-6.7*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+						} else {
+							if ($v50) {
+								Get-EsxImageprofile "ESXi-5.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+							} else {
+								# Workaround for http://kb.vmware.com/kb/2089217
+								Get-EsxImageprofile "ESXi-5.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+								Get-EsxImageprofile "ESXi-5.1*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+								Get-EsxImageprofile "ESXi-5.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+								Get-EsxImageprofile "ESXi-6.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+								Get-EsxImageprofile "ESXi-6.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+								Get-EsxImageprofile "ESXi-6.7*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+								Get-EsxImageprofile "ESXi-7.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+							}
 						}
 					}
 				}
