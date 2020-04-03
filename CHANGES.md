@@ -1,8 +1,5 @@
 ### === Change History ===
 
-######  Version 2.8.0 (2020-04-02)
-	(Alex) Made the script fully compatible with vSphere 7.0
-
 ######  Version 2.7.0 (2018-05-25)
 	(Alex) Enhanced variable for better VMware.PowerCLI module version detection; script restructure
 	(Andre) Added -pzip parameter to use an Offline patch bundle instead of the Online depot with -update
