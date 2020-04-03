@@ -114,7 +114,7 @@ function cleanup() {
 write-host ("`nThis is " + $ScriptName + " Version " + $ScriptVersion + " (visit " + $ScriptURL + " for more information!)")
 if ($help) {
     write-host "`nUsage:"
-    write-host "  ESXi-Customizer-PS [-help] |  [-izip <bundle> [-update]] [-sip] [-v67|-v65|-v60|-v55|-v51|-v50]"
+    write-host "  ESXi-Customizer-PS [-help] |  [-izip <bundle> [-update]] [-sip] [-v70|-v67|-v65|-v60|-v55|-v51|-v50]"
     write-host "                                [-ozip] [-pkgDir <dir>] [-outDir <dir>] [-vft] [-dpt depot1[,...]]"
     write-host "                                [-load vib1[,...]] [-remove vib1[,...]] [-log <file>] [-ipname <name>]"
     write-host "                                [-ipdesc <desc>] [-ipvendor <vendor>] [-nsc] [-test]"
