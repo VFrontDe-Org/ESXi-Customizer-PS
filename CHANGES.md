@@ -1,5 +1,8 @@
 ### === Change History ===
 
+######  Version 2.8.1 (2020-05-17)
+	(Vladislav) Enhanced `-pkgDir` switch to support a list of local directories
+
 ######  Version 2.8.0 (2020-04-02)
 	(Alex) Made the script fully compatible with vSphere 7.0
 
