@@ -167,7 +167,7 @@ $isModule = @{}
 try {
 
 # Check for and load required modules/snapins
-foreach ($comp in "VMware.VimAutomation.Core", "VMware.ImageBuilder") {
+foreach ($comp in "VMware.VimAutomation.Core", "VMware.ImageBuilder", "VMware.PowerCLI") {
     if (Get-Module -ListAvailable -Name $comp -ErrorAction:SilentlyContinue) {
 		$isModule[$comp] = $true
         if (!(Get-Module -Name $comp -ErrorAction:SilentlyContinue)) {
