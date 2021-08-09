@@ -296,42 +296,30 @@ $iplist = @()
 if ($iZip -and !($update)) {
     Get-EsxImageprofile -Softwaredepot $basedepot | foreach { $iplist += $_ }
 } else {
-	if ($v70) {
-		Get-EsxImageprofile "ESXi-7.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-	} else {
-		if ($v67) {
-			Get-EsxImageprofile "ESXi-6.7*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-		} else {
-			if ($v65) {
-				Get-EsxImageprofile "ESXi-6.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-			} else {
-				if ($v60) {
-					Get-EsxImageprofile "ESXi-6.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-				} else {
-					if ($v55) {
-						Get-EsxImageprofile "ESXi-5.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-					} else {
-						if ($v51) {
-							Get-EsxImageprofile "ESXi-5.1*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-						} else {
-							if ($v50) {
-								Get-EsxImageprofile "ESXi-5.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-							} else {
-								# Workaround for http://kb.vmware.com/kb/2089217
-								Get-EsxImageprofile "ESXi-5.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-								Get-EsxImageprofile "ESXi-5.1*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-								Get-EsxImageprofile "ESXi-5.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-								Get-EsxImageprofile "ESXi-6.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-								Get-EsxImageprofile "ESXi-6.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-								Get-EsxImageprofile "ESXi-6.7*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-								Get-EsxImageprofile "ESXi-7.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+    if ($v70) {
+	Get-EsxImageprofile "ESXi-7.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    } elseif ($v67) {
+	Get-EsxImageprofile "ESXi-6.7*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    } elseif ($v65) {
+	Get-EsxImageprofile "ESXi-6.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    } elseif ($v60) {
+	Get-EsxImageprofile "ESXi-6.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    } elseif ($v55) {
+	Get-EsxImageprofile "ESXi-5.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    } elseif ($v51) {
+	Get-EsxImageprofile "ESXi-5.1*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    } elseif ($v50) {
+	Get-EsxImageprofile "ESXi-5.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    } else {
+	# Workaround for http://kb.vmware.com/kb/2089217
+	Get-EsxImageprofile "ESXi-5.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+	Get-EsxImageprofile "ESXi-5.1*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+	Get-EsxImageprofile "ESXi-5.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+	Get-EsxImageprofile "ESXi-6.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+	Get-EsxImageprofile "ESXi-6.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+	Get-EsxImageprofile "ESXi-6.7*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+	Get-EsxImageprofile "ESXi-7.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    }
 }
 
 if ($iplist.Length -eq 0) {
