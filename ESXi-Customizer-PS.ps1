@@ -2,7 +2,7 @@
 #
 # ESXi-Customizer-PS.ps1 - a script to build a customized ESXi installation ISO using ImageBuilder
 #
-# Version:       2.8.1
+# Version:       2.8.2
 # Author:        Andreas Peetz (ESXi-Customizer-PS@v-front.de)
 # Info/Tutorial: https://esxi-customizer-ps.v-front.de/
 #
@@ -50,7 +50,7 @@ param(
 
 # Constants
 $ScriptName = "ESXi-Customizer-PS"
-$ScriptVersion = "2.8.1"
+$ScriptVersion = "2.8.2"
 $ScriptURL = "https://ESXi-Customizer-PS.v-front.de"
 
 $AccLevel = @{"VMwareCertified" = 1; "VMwareAccepted" = 2; "PartnerSupported" = 3; "CommunitySupported" = 4}
@@ -63,7 +63,7 @@ $vftdepotURL = "https://vibsdepot.v-front.de/"
 function AddVIB2Profile($vib) {
     $AddVersion = $vib.Version
     $ExVersion = ($MyProfile.VibList | where { $_.Name -eq $vib.Name }).Version
-    
+
     # Check for vib replacements
     $ExName = ""
     if ($ExVersion -eq $null) {
@@ -76,7 +76,7 @@ function AddVIB2Profile($vib) {
             }
         }
     }
-    
+
     if ($AccLevel[$vib.AcceptanceLevel.ToString()] -gt $AccLevel[$MyProfile.AcceptanceLevel.ToString()]) {
         write-host -F Yellow -nonewline (" [New AcceptanceLevel: " + $vib.AcceptanceLevel + "]")
         $MyProfile.AcceptanceLevel = $vib.AcceptanceLevel
@@ -84,7 +84,7 @@ function AddVIB2Profile($vib) {
     If ($MyProfile.VibList -contains $vib) {
         write-host -F Yellow " [IGNORED, already added]"
     } else {
-        Add-EsxSoftwarePackage -SoftwarePackage $vib -Imageprofile $MyProfile -force -ErrorAction SilentlyContinue | Out-Null
+        Add-EsxSoftwarePackage -SoftwarePackage $vib -Imageprofile $MyProfile -Force -ErrorAction SilentlyContinue | Out-Null
         if ($?) {
             if ($ExVersion -eq $null) {
                 write-host -F Green " [OK, added]"
@@ -166,10 +166,18 @@ if ($help) {
 $isModule = @{}
 try {
 
+# Check for and enable Ssl3 & Tls12 support for this session (WinError 10054 workaround, may still fail at times.)
+    if ([Net.ServicePointManager]::SecurityProtocol -notcontains 'Ssl3') {
+        [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Ssl3 | Out-Null
+    }
+    if ([Net.ServicePointManager]::SecurityProtocol -notcontains 'Tls12') {
+        [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 | Out-Null
+    }
+
 # Check for and load required modules/snapins
-foreach ($comp in "VMware.VimAutomation.Core", "VMware.ImageBuilder") {
+foreach ($comp in "VMware.VimAutomation.Core", "VMware.ImageBuilder", "VMware.PowerCLI") {
     if (Get-Module -ListAvailable -Name $comp -ErrorAction:SilentlyContinue) {
-		$isModule[$comp] = $true
+        $isModule[$comp] = $true
         if (!(Get-Module -Name $comp -ErrorAction:SilentlyContinue)) {
             if (!(Import-Module -PassThru -Name $comp -ErrorAction:SilentlyContinue)) {
                 write-host -F Red "`nFATAL ERROR: Failed to import the $comp module!`n"
@@ -177,7 +185,7 @@ foreach ($comp in "VMware.VimAutomation.Core", "VMware.ImageBuilder") {
             }
         }
     } else {
-		$isModule[$comp] = $false
+        $isModule[$comp] = $false
         if (Get-PSSnapin -Registered -Name $comp -ErrorAction:SilentlyContinue) {
             if (!(Get-PSSnapin -Name $comp -ErrorAction:SilentlyContinue)) {
                 if (!(Add-PSSnapin -PassThru -Name $comp -ErrorAction:SilentlyContinue)) {
@@ -209,15 +217,15 @@ if (!(Test-Path variable:PSVersionTable)) {
 $psv = $PSVersionTable.PSVersion | select Major,Minor
 
 if ($isModule["VMware.VimAutomation.Core"]) {
-	$pcmv = (Get-Module VMware.PowerCLI).Version | select Major,Minor,Build,Revision
-	write-host -F Yellow ("`nRunning with PowerShell version " + $psv.Major + "." + $psv.Minor + " and VMware PowerCLI version " + $pcmv.Major + "." + $pcmv.Minor + "." + $pcmv.Build + " build " + $pcmv.Revision )
+    $pcmv = (Get-Module VMware.PowerCLI).Version | select Major,Minor,Build,Revision
+    write-host -F Yellow ("`nRunning with PowerShell version " + $psv.Major + "." + $psv.Minor + " and VMware PowerCLI version " + $pcmv.Major + "." + $pcmv.Minor + "." + $pcmv.Build + " build " + $pcmv.Revision )
 } else {
-	$pcv = Get-PowerCLIVersion | select major,minor,UserFriendlyVersion
-	write-host -F Yellow ("`nRunning with PowerShell version " + $psv.Major + "." + $psv.Minor + " and " + $pcv.UserFriendlyVersion)
-	if ( ($pcv.major -lt 5) -or (($pcv.major -eq 5) -and ($pcv.minor -eq 0)) ) {
-		write-host -F Red "`nFATAL ERROR: This script requires at least PowerCLI version 5.1 !`n"
-		exit
-	}
+    $pcv = Get-PowerCLIVersion | select major,minor,UserFriendlyVersion
+    write-host -F Yellow ("`nRunning with PowerShell version " + $psv.Major + "." + $psv.Minor + " and " + $pcv.UserFriendlyVersion)
+    if ( ($pcv.major -lt 5) -or (($pcv.major -eq 5) -and ($pcv.minor -eq 0)) ) {
+        write-host -F Red "`nFATAL ERROR: This script requires at least PowerCLI version 5.1 !`n"
+        exit
+    }
 }
 
 if ($update) {
@@ -276,19 +284,18 @@ if ($vft) {
 }
 
 if ($dpt -ne @()) {
-	# Connect additional depots (Online depot or Offline bundle)
-	$AddDpt = @()
-	for ($i=0; $i -lt $dpt.Length; $i++ ) {
-		write-host -nonewline ("`nConnecting additional depot " + $dpt[$i] + " ...")
-		if ($AddDpt += Add-EsxSoftwaredepot $dpt[$i]) {
-			write-host -F Green " [OK]"
-		} else {
-			write-host -F Red "`nFATAL ERROR: Cannot add Online depot or Offline bundle. In case of Online depot check your Internet"
-			write-host -F Red "connectivity and/or proxy settings! In case of Offline bundle check file name, format and permissions!`n"
-			exit
-		}
-	}
-
+    # Connect additional depots (Online depot or Offline bundle)
+    $AddDpt = @()
+    for ($i=0; $i -lt $dpt.Length; $i++ ) {
+        write-host -nonewline ("`nConnecting additional depot " + $dpt[$i] + " ...")
+        if ($AddDpt += Add-EsxSoftwaredepot $dpt[$i]) {
+            write-host -F Green " [OK]"
+        } else {
+            write-host -F Red "`nFATAL ERROR: Cannot add Online depot or Offline bundle. In case of Online depot check your Internet"
+            write-host -F Red "connectivity and/or proxy settings! In case of Offline bundle check file name, format and permissions!`n"
+            exit
+        }
+    }
 }
 
 write-host -NoNewLine "`nGetting Imageprofiles, please wait ..."
@@ -296,42 +303,30 @@ $iplist = @()
 if ($iZip -and !($update)) {
     Get-EsxImageprofile -Softwaredepot $basedepot | foreach { $iplist += $_ }
 } else {
-	if ($v70) {
-		Get-EsxImageprofile "ESXi-7.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-	} else {
-		if ($v67) {
-			Get-EsxImageprofile "ESXi-6.7*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-		} else {
-			if ($v65) {
-				Get-EsxImageprofile "ESXi-6.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-			} else {
-				if ($v60) {
-					Get-EsxImageprofile "ESXi-6.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-				} else {
-					if ($v55) {
-						Get-EsxImageprofile "ESXi-5.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-					} else {
-						if ($v51) {
-							Get-EsxImageprofile "ESXi-5.1*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-						} else {
-							if ($v50) {
-								Get-EsxImageprofile "ESXi-5.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-							} else {
-								# Workaround for http://kb.vmware.com/kb/2089217
-								Get-EsxImageprofile "ESXi-5.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-								Get-EsxImageprofile "ESXi-5.1*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-								Get-EsxImageprofile "ESXi-5.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-								Get-EsxImageprofile "ESXi-6.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-								Get-EsxImageprofile "ESXi-6.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-								Get-EsxImageprofile "ESXi-6.7*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-								Get-EsxImageprofile "ESXi-7.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+    if ($v70) {
+        Get-EsxImageprofile "ESXi-7.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    } elseif ($v67) {
+        Get-EsxImageprofile "ESXi-6.7*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    } elseif ($v65) {
+        Get-EsxImageprofile "ESXi-6.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    } elseif ($v60) {
+        Get-EsxImageprofile "ESXi-6.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    } elseif ($v55) {
+        Get-EsxImageprofile "ESXi-5.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    } elseif ($v51) {
+        Get-EsxImageprofile "ESXi-5.1*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    } elseif ($v50) {
+        Get-EsxImageprofile "ESXi-5.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    } else {
+        # Workaround for http://kb.vmware.com/kb/2089217
+        Get-EsxImageprofile "ESXi-5.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+        Get-EsxImageprofile "ESXi-5.1*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+        Get-EsxImageprofile "ESXi-5.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+        Get-EsxImageprofile "ESXi-6.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+        Get-EsxImageprofile "ESXi-6.5*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+        Get-EsxImageprofile "ESXi-6.7*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+        Get-EsxImageprofile "ESXi-7.0*" -Softwaredepot $basedepot | foreach { $iplist += $_ }
+    }
 }
 
 if ($iplist.Length -eq 0) {
@@ -495,13 +490,13 @@ write-host -F Green "`nAll done.`n"
 # The main cleanup
 } finally {
     cleanup
-	if (!($PSBoundParameters.ContainsKey('log')) -and $PSBoundParameters.ContainsKey('outDir') -and ($outFile -like '*zip*')) {
-		$finalLog = ($outDir + "\" + $MyProfile.Name + ".zip" + "-" + (get-date -Format yyyyMMddHHmm) + ".log")
-		Move-Item $log $finalLog -force
-		write-host ("(Log file moved to " + $finalLog + ")`n")
-	} elseif (!($PSBoundParameters.ContainsKey('log')) -and $PSBoundParameters.ContainsKey('outDir') -and ($outFile -like '*iso*')) {
-			$finalLog = ($outDir + "\" + $MyProfile.Name + ".iso" + "-" + (Get-Date -Format yyyyMMddHHmm) + ".log")
-			Move-Item $log $finalLog -force
-			write-host ("(Log file moved to " + $finalLog + ")`n")
-		}
+    if (!($PSBoundParameters.ContainsKey('log')) -and $PSBoundParameters.ContainsKey('outDir') -and ($outFile -like '*zip*')) {
+        $finalLog = ($outDir + "\" + $MyProfile.Name + ".zip" + "-" + (get-date -Format yyyyMMddHHmm) + ".log")
+        Move-Item $log $finalLog -force
+        write-host ("(Log file moved to " + $finalLog + ")`n")
+    } elseif (!($PSBoundParameters.ContainsKey('log')) -and $PSBoundParameters.ContainsKey('outDir') -and ($outFile -like '*iso*')) {
+            $finalLog = ($outDir + "\" + $MyProfile.Name + ".iso" + "-" + (Get-Date -Format yyyyMMddHHmm) + ".log")
+            Move-Item $log $finalLog -force
+            write-host ("(Log file moved to " + $finalLog + ")`n")
+        }
 }
