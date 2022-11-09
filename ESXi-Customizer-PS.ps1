@@ -299,15 +299,14 @@ if ($dpt -ne @()) {
     }
 }
 
-write-host -NoNewLine "`nGetting Imageprofiles, please wait ..."`n
+write-host -NoNewLine "`nGetting Imageprofiles, please wait ..."
 $iplist = @()
 if ($iZip -and !($update)) {
     Get-EsxImageprofile -Softwaredepot $basedepot | foreach { $iplist += $_ }
 } else {
     if ($v80) {
-        $pcv = Get-PowerCLIVersion | select major,minor,UserFriendlyVersion
         $pcmv = (Get-Module VMware.PowerCLI).Version | select Major,Minor,Build,Revision
-        if (( $pcv.Major -le 6 ) -or (( $pcmv.Major -le 12 ) -and ( $pcmv.Minor -le 7 ))) {
+        if (( $pcmv.Major -le 12 ) -and ( $pcmv.Minor -le 7 )) {
             Write-Warning "*** This version of PowerCLI cannot be used to create an ESXi 8.x .iso, please update to a newer PowerCLI version if available...***`n`n(Refer to https://williamlam.com/2022/11/quick-tip-changes-to-building-custom-esxi-images-in-vsphere-8.html for more info...)"
             exit
         } else {
