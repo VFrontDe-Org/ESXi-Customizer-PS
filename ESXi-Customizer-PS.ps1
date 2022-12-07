@@ -2,7 +2,7 @@
 #
 # ESXi-Customizer-PS.ps1 - a script to build a customized ESXi installation ISO using ImageBuilder
 #
-# Version:       2.9.0
+# Version:       2.9.1
 # Author:        Andreas Peetz (ESXi-Customizer-PS@v-front.de)
 # Info/Tutorial: https://esxi-customizer-ps.v-front.de/
 #
@@ -49,9 +49,13 @@
     [string]$log = ($env:TEMP + "\ESXi-Customizer-PS-" + $PID + ".log")
 )
 
+if ( $IsLinux -or $IsMacOS ) {
+    [string]$log = ($env:TMPDIR + "ESXi-Customizer-PS-" + $PID + ".log")
+}
+
 # Constants
 $ScriptName = "ESXi-Customizer-PS"
-$ScriptVersion = "2.9.0"
+$ScriptVersion = "2.9.1"
 $ScriptURL = "https://ESXi-Customizer-PS.v-front.de"
 
 $AccLevel = @{"VMwareCertified" = 1; "VMwareAccepted" = 2; "PartnerSupported" = 3; "CommunitySupported" = 4}
@@ -167,13 +171,15 @@ if ($help) {
 $isModule = @{}
 try {
 
-# Check for and enable Ssl3 & Tls12 support for this session (WinError 10054 workaround, may still fail at times.)
-    if ([Net.ServicePointManager]::SecurityProtocol -notcontains 'Ssl3') {
-        [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Ssl3 | Out-Null
-    }
-    if ([Net.ServicePointManager]::SecurityProtocol -notcontains 'Tls12') {
-        [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 | Out-Null
-    }
+    <# if (!($IsLinux) -or !($IsMacOS) ) {
+        # Check for and enable Ssl3 & Tls12 support for this session (WinError 10054 workaround, may still fail at times.)
+        if ([Net.ServicePointManager]::SecurityProtocol -notcontains 'Ssl3') {
+            [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Ssl3 | Out-Null
+        }
+        if ([Net.ServicePointManager]::SecurityProtocol -notcontains 'Tls12') {
+            [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 | Out-Null
+        }
+    } #>
 
 # Check for and load required modules/snapins
 foreach ($comp in "VMware.VimAutomation.Core", "VMware.ImageBuilder", "VMware.PowerCLI") {
@@ -411,27 +417,53 @@ if ( ($pkgDir -ne @()) -or $update -or ($load -ne @()) -or ($remove -ne @()) ) {
     if ($pkgDir -ne @()) {
         write-host "`nLoading Offline bundles and VIB files from" $pkgDir ...
         foreach ($dir in $pkgDir) {
-            foreach ($obundle in Get-Item $dir\*.zip) {
-                write-host -nonewline "   Loading" $obundle ...
-                if ($ob = Add-EsxSoftwaredepot $obundle -ErrorAction SilentlyContinue) {
-                    write-host -F Green " [OK]"
-                    $ob | Get-EsxSoftwarePackage | foreach {
-                        write-host -nonewline "      Add VIB" $_.Name $_.Version
-                        AddVIB2Profile $_
+            if ( $IsLinux -or $IsMacOS ) {
+                foreach ($obundle in Get-Item $dir/*.zip) {
+                    write-host -nonewline "   Loading" $obundle ...
+                    if ($ob = Add-EsxSoftwaredepot $obundle -ErrorAction SilentlyContinue) {
+                        write-host -F Green " [OK]"
+                        $ob | Get-EsxSoftwarePackage | foreach {
+                            write-host -nonewline "      Add VIB" $_.Name $_.Version
+                            AddVIB2Profile $_
+                        }
+                    } else {
+                        write-host -F Red " [FAILED]`n      Probably not a valid Offline bundle, ignoring."
                     }
-                } else {
-                    write-host -F Red " [FAILED]`n      Probably not a valid Offline bundle, ignoring."
                 }
-            }
-            foreach ($vibFile in Get-Item $dir\*.vib) {
-                write-host -nonewline "   Loading" $vibFile ...
-                try {
-                    $vib1 = Get-EsxSoftwarePackage -PackageUrl $vibFile -ErrorAction SilentlyContinue
-                    write-host -F Green " [OK]"
-                    write-host -nonewline "      Add VIB" $vib1.Name $vib1.Version
-                    AddVIB2Profile $vib1
-                } catch {
-                    write-host -F Red " [FAILED]`n      Probably not a valid VIB file, ignoring."
+                foreach ($vibFile in Get-Item $dir/*.vib) {
+                    write-host -nonewline "   Loading" $vibFile ...
+                    try {
+                        $vib1 = Get-EsxSoftwarePackage -PackageUrl $vibFile -ErrorAction SilentlyContinue
+                        write-host -F Green " [OK]"
+                        write-host -nonewline "      Add VIB" $vib1.Name $vib1.Version
+                        AddVIB2Profile $vib1
+                    } catch {
+                        write-host -F Red " [FAILED]`n      Probably not a valid VIB file, ignoring."
+                    }
+                }
+            } else {
+                foreach ($obundle in Get-Item $dir\*.zip) {
+                    write-host -nonewline "   Loading" $obundle ...
+                    if ($ob = Add-EsxSoftwaredepot $obundle -ErrorAction SilentlyContinue) {
+                        write-host -F Green " [OK]"
+                        $ob | Get-EsxSoftwarePackage | foreach {
+                            write-host -nonewline "      Add VIB" $_.Name $_.Version
+                            AddVIB2Profile $_
+                        }
+                    } else {
+                        write-host -F Red " [FAILED]`n      Probably not a valid Offline bundle, ignoring."
+                    }
+                }
+                foreach ($vibFile in Get-Item $dir\*.vib) {
+                    write-host -nonewline "   Loading" $vibFile ...
+                    try {
+                        $vib1 = Get-EsxSoftwarePackage -PackageUrl $vibFile -ErrorAction SilentlyContinue
+                        write-host -F Green " [OK]"
+                        write-host -nonewline "      Add VIB" $vib1.Name $vib1.Version
+                        AddVIB2Profile $vib1
+                    } catch {
+                        write-host -F Red " [FAILED]`n      Probably not a valid VIB file, ignoring."
+                    }
                 }
             }
         }
@@ -470,16 +502,29 @@ if ( ($pkgDir -ne @()) -or $update -or ($load -ne @()) -or ($remove -ne @()) ) {
 # Build the export command:
 $cmd = "Export-EsxImageprofile -Imageprofile " + "`'" + $MyProfile.Name + "`'"
 
-if ($ozip) {
-    $outFile = "`'" + $outDir + "\" + $MyProfile.Name + ".zip" + "`'"
-    $cmd = $cmd + " -ExportTobundle"
+if ( $IsLinux -or $IsMacOS ) {
+    if ($ozip) {
+        $outFile = "`'" + $outDir + $MyProfile.Name + ".zip" + "`'"
+        $cmd = $cmd + " -ExportTobundle"
+    } else {
+        $outFile = "`'" + $outDir + $MyProfile.Name + ".iso" + "`'"
+        $cmd = $cmd + " -ExportToISO"
+    }
+    $cmd = $cmd + " -FilePath " + $outFile
+    if ($nsc) { $cmd = $cmd + " -NoSignatureCheck" }
+    $cmd = $cmd + " -Force"
 } else {
-    $outFile = "`'" + $outDir + "\" + $MyProfile.Name + ".iso" + "`'"
-    $cmd = $cmd + " -ExportToISO"
+    if ($ozip) {
+        $outFile = "`'" + $outDir + "\" + $MyProfile.Name + ".zip" + "`'"
+        $cmd = $cmd + " -ExportTobundle"
+    } else {
+        $outFile = "`'" + $outDir + "\" + $MyProfile.Name + ".iso" + "`'"
+        $cmd = $cmd + " -ExportToISO"
+    }
+    $cmd = $cmd + " -FilePath " + $outFile
+    if ($nsc) { $cmd = $cmd + " -NoSignatureCheck" }
+    $cmd = $cmd + " -Force"
 }
-$cmd = $cmd + " -FilePath " + $outFile
-if ($nsc) { $cmd = $cmd + " -NoSignatureCheck" }
-$cmd = $cmd + " -Force"
 
 # Run the export:
 write-host -nonewline ("`nExporting the Imageprofile to " + $outFile + ". Please be patient ...")
@@ -501,12 +546,20 @@ write-host -F Green "`nAll done.`n"
 } finally {
     cleanup
     if (!($PSBoundParameters.ContainsKey('log')) -and $PSBoundParameters.ContainsKey('outDir') -and ($outFile -like '*zip*')) {
-        $finalLog = ($outDir + "\" + $MyProfile.Name + ".zip" + "-" + (get-date -Format yyyyMMddHHmm) + ".log")
+        if ( $IsLinux -or $IsMacOS ) {
+            $finalLog = ($outDir + $MyProfile.Name + ".zip" + "-" + (get-date -Format yyyyMMddHHmm) + ".log")
+        } else {
+            $finalLog = ($outDir + "\" + $MyProfile.Name + ".zip" + "-" + (get-date -Format yyyyMMddHHmm) + ".log")
+        }
         Move-Item $log $finalLog -force
         write-host ("(Log file moved to " + $finalLog + ")`n")
     } elseif (!($PSBoundParameters.ContainsKey('log')) -and $PSBoundParameters.ContainsKey('outDir') -and ($outFile -like '*iso*')) {
+        if ( $IsLinux -or $IsMacOS ) {
+            $finalLog = ($outDir + $MyProfile.Name + ".iso" + "-" + (Get-Date -Format yyyyMMddHHmm) + ".log")
+        } else {
             $finalLog = ($outDir + "\" + $MyProfile.Name + ".iso" + "-" + (Get-Date -Format yyyyMMddHHmm) + ".log")
-            Move-Item $log $finalLog -force
-            write-host ("(Log file moved to " + $finalLog + ")`n")
         }
+        Move-Item $log $finalLog -force
+        write-host ("(Log file moved to " + $finalLog + ")`n")
+    }
 }
